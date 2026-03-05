@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "intranet-corporativa-client-side-solution",
+    "id": "48953ae1-e763-4207-aff0-259a3a52302f",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.22.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "intranet-corporativa description"
+      },
+      "longDescription": {
+        "default": "intranet-corporativa description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "intranet-corporativa Feature",
+        "description": "The feature that activates elements of the intranet-corporativa solution.",
+        "id": "0a8bd273-7aeb-4ede-a1d8-8e00d7e5afff",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/intranet-corporativa.sppkg"
+  }
+}
