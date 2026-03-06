@@ -21,7 +21,7 @@ export default class HomePrincipalWebPart extends BaseClientSideWebPart<IHomePri
   private _isDarkTheme: boolean = false;
   private _environmentMessage: string = '';
 
-  public render(): void {
+public render(): void {
     const element: React.ReactElement<IHomePrincipalProps> = React.createElement(
       HomePrincipal,
       {
@@ -29,7 +29,8 @@ export default class HomePrincipalWebPart extends BaseClientSideWebPart<IHomePri
         isDarkTheme: this._isDarkTheme,
         environmentMessage: this._environmentMessage,
         hasTeamsContext: !!this.context.sdks.microsoftTeams,
-        userDisplayName: this.context.pageContext.user.displayName
+        userDisplayName: this.context.pageContext.user.displayName,
+        context: this.context
       }
     );
 

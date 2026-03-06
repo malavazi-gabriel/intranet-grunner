@@ -1,82 +1,224 @@
 import * as React from 'react';
 import { IHomePrincipalProps } from './IHomePrincipalProps';
-
-// 1. IMPORTANTE: Importar os estilos para usar o 'styles.buttonBase'
 import styles from './HomePrincipal.module.scss';
-
-// 2. Importação do logo (usando o nome que você renomeou)
 import logoGrunner from '../assets/logo-grunner.png';
+import { SPHttpClient, SPHttpClientResponse } from '@microsoft/sp-http';
 
-const ANIVERSARIANTES = [
-  { nome: 'Gabriel Malavazi', dia: '15', setor: 'TI' },
-  { nome: 'Júlia Silva', dia: '20', setor: 'RH' },
-  { nome: 'Marcos Oliveira', dia: '22', setor: 'Logística' },
-];
+interface IHomePrincipalState { 
+  menuAberto: boolean; 
+  noticiasReais: any[]; 
+  aniversariantesReais: any[]; 
+  eventosReais: any[]; // Nossa terceira e última lista!
+}
 
-export default class HomePrincipal extends React.Component<IHomePrincipalProps, {}> {
+export default class HomePrincipal extends React.Component<IHomePrincipalProps, IHomePrincipalState> {
+  private menuRef: React.RefObject<HTMLElement>;
+
+  constructor(props: IHomePrincipalProps) {
+    super(props);
+    this.state = { 
+      menuAberto: false,
+      noticiasReais: [],
+      aniversariantesReais: [],
+      eventosReais: [] // Começa vazio
+    };
+    this.menuRef = React.createRef();
+  }
+
+  public componentDidMount() {
+    document.addEventListener('mousedown', this.handleClickOutside);
+    // Dispara as 3 buscas ao mesmo tempo!
+    this.buscarNoticias(); 
+    this.buscarAniversariantes(); 
+    this.buscarEventos(); 
+  }
+
+  public componentWillUnmount() {
+    document.removeEventListener('mousedown', this.handleClickOutside);
+  }
+
+  // === 1. NOTÍCIAS (MARKETING) ===
+  private buscarNoticias = async () => {
+    try {
+      const url = `${this.props.context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('NoticiasGrunner')/items?$select=Title,Resumo,ImagemURL,LinkNoticia&$top=5&$orderby=Created desc`;
+      const response: SPHttpClientResponse = await this.props.context.spHttpClient.get(url, SPHttpClient.configurations.v1);
+      const data = await response.json();
+      if (data && data.value) this.setState({ noticiasReais: data.value });
+    } catch (error) { console.error("Erro ao buscar notícias:", error); }
+  }
+
+  // === 2. ANIVERSARIANTES (RH) ===
+  private buscarAniversariantes = async () => {
+    try {
+      const url = `${this.props.context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('AniversariantesGrunner')/items?$select=Title,Dia,Setor,Email&$top=4`;
+      const response: SPHttpClientResponse = await this.props.context.spHttpClient.get(url, SPHttpClient.configurations.v1);
+      const data = await response.json();
+      if (data && data.value) this.setState({ aniversariantesReais: data.value });
+    } catch (error) { console.error("Erro ao buscar aniversariantes:", error); }
+  }
+
+  // === 3. EVENTOS (COMUNICAÇÃO) ===
+  private buscarEventos = async () => {
+    try {
+      const url = `${this.props.context.pageContext.web.absoluteUrl}/_api/web/lists/getbytitle('EventosGrunner')/items?$select=Title,Dia,Mes,Local&$top=3&$orderby=Created desc`;
+      const response: SPHttpClientResponse = await this.props.context.spHttpClient.get(url, SPHttpClient.configurations.v1);
+      const data = await response.json();
+      if (data && data.value) this.setState({ eventosReais: data.value });
+    } catch (error) { console.error("Erro ao buscar eventos:", error); }
+  }
+
+  private handleClickOutside = (event: MouseEvent) => {
+    if (this.state.menuAberto && this.menuRef.current && !this.menuRef.current.contains(event.target as Node)) {
+      this.setState({ menuAberto: false });
+    }
+  };
+
+  private toggleMenu = () => { this.setState((prevState) => ({ menuAberto: !prevState.menuAberto })); };
+
   public render(): React.ReactElement<IHomePrincipalProps> {
+    
+    const noticiaDestaque = this.state.noticiasReais.length > 0 ? this.state.noticiasReais[0] : null;
+    const outrasNoticias = this.state.noticiasReais.length > 1 ? this.state.noticiasReais.slice(1) : [];
+
     return (
-      <section style={{ backgroundColor: '#F8F9FA', minHeight: '100vh', fontFamily: 'Segoe UI', display: 'flex', flexDirection: 'column' }}>
+      <section className={styles.homePrincipal}>
         
-        {/* HEADER */}
-        <header style={{ 
-          backgroundColor: '#ffffff', 
-          padding: '0 40px', 
-          height: '70px',
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          zIndex: 10
-        }}>
-          <img src={logoGrunner} alt="Grunner" style={{ height: '45px' }} />
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontWeight: 600, color: '#1A1C1E' }}>{this.props.userDisplayName}</div>
-            <div style={{ fontSize: '11px', color: '#70777E' }}>ANALISTA DE TI</div>
+        <div className={styles.headerContainer}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+            <img src={logoGrunner} alt="Grunner" style={{ height: '60px', objectFit: 'contain' }} />
+            <div>
+              <h1 className={styles.greetingTitle}>Bem-vindo ao Portal, {this.props.userDisplayName?.split(' ')[0]}.</h1>
+              <p className={styles.greetingSub}>O centro nervoso da nossa operação agro e tecnológica.</p>
+            </div>
           </div>
-        </header>
 
-        <div style={{ display: 'flex', flex: 1 }}>
-          
-          {/* SIDEBAR */}
-          <nav style={{ width: '260px', backgroundColor: '#ffffff', borderRight: '1px solid #E9ECEF', padding: '30px 0' }}>
-            <div style={{ padding: '0 25px 15px', color: '#ADB5BD', fontSize: '11px', fontWeight: 700 }}>MENU PRINCIPAL</div>
-            <a href="#" style={{ padding: '12px 25px', display: 'block', textDecoration: 'none', color: '#A6CE39', backgroundColor: '#F1F9E6', borderLeft: '4px solid #A6CE39', fontWeight: 600 }}>📊 Dashboard de Redes</a>
-            <a href="#" style={{ padding: '12px 25px', display: 'block', textDecoration: 'none', color: '#495057' }}>🛡️ Segurança</a>
+          <nav className={styles.topNav} ref={this.menuRef}>
+            <a href="#" className={styles.topMenuLink}>🎫 Chamados (TI)</a>
+            <a href="#" className={styles.topMenuLink}>📊 Dashboards Zabbix</a>
+            <button onClick={this.toggleMenu} className={`${styles.topMenuLink} ${styles.megaMenuBtn} ${this.state.menuAberto ? styles.active : ''}`}>
+              🗂️ Ecossistema Grunner {this.state.menuAberto ? '▲' : '▼'}
+            </button>
+            
+            {this.state.menuAberto && (
+              <div className={styles.megaMenu}>
+                <div>
+                  <h4 className={styles.megaMenuCategory}>Infraestrutura IT</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <a href="#" className={styles.dropdownLink}>Microsoft 365 Admin</a>
+                    <a href="#" className={styles.dropdownLink}>Gestão de Ativos</a>
+                    <a href="#" className={styles.dropdownLink}>Zabbix e Grafana</a>
+                  </div>
+                </div>
+                <div>
+                  <h4 className={styles.megaMenuCategory}>Gente e Gestão</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <a href="#" className={styles.dropdownLink}>Portal RH</a>
+                    <a href="#" className={styles.dropdownLink}>Código de Conduta</a>
+                    <a href="#" className={styles.dropdownLink}>Comunicados Oficiais</a>
+                  </div>
+                </div>
+                <div>
+                  <h4 className={styles.megaMenuCategory}>Operacional</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <a href="#" className={styles.dropdownLink}>Sistema de Logística</a>
+                    <a href="#" className={styles.dropdownLink}>Telemetria de Máquinas</a>
+                  </div>
+                </div>
+              </div>
+            )}
           </nav>
+        </div>
 
-          {/* CONTEÚDO */}
-          <main style={{ flex: 1, padding: '40px' }}>
-            <h1 style={{ fontSize: '24px', color: '#1A1C1E', marginBottom: '30px' }}>Bem-vindo ao Portal Grunner</h1>
+        {noticiaDestaque && (
+          <div className={styles.heroBanner} onClick={() => window.open(noticiaDestaque.LinkNoticia || '#', '_blank')} style={{ cursor: 'pointer' }}>
+            <div className={styles.heroBg} style={{ backgroundImage: `url(${noticiaDestaque.ImagemURL})` }} />
+            <div className={styles.heroOverlay} />
+            <div className={styles.heroContent}>
+              <span className={styles.badge}>Destaque Operacional</span>
+              <h2 style={{ margin: '15px 0 10px 0', fontSize: '36px', color: '#ffffff', fontWeight: 800, lineHeight: '1.1', maxWidth: '800px' }}>{noticiaDestaque.Title}</h2>
+              <p style={{ margin: '0 0 25px 0', color: '#D1D5DB', fontSize: '16px', maxWidth: '650px', lineHeight: '1.5' }}>{noticiaDestaque.Resumo}</p>
+              <button className={styles.primaryBtn}>Ler Comunicado Completo</button>
+            </div>
+          </div>
+        )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+        <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          
+          <div style={{ flex: '2 1 500px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 className={styles.sectionTitle}>Grunner em Ação</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
               
-              {/* CARD COM O BOTÃO INTERATIVO */}
-              <div style={{ backgroundColor: '#ffffff', padding: '30px', borderRadius: '12px', border: '1px solid #F1F3F5', display: 'flex', flexDirection: 'column' }}>
-                 <span style={{ backgroundColor: '#EBF5D6', color: '#5E7D14', padding: '4px 10px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, width: 'fit-content', marginBottom: '15px' }}>TI & INFRA</span>
-                 <h3 style={{ margin: '0 0 10px 0' }}>Monitoramento em Tempo Real</h3>
-                 <p style={{ fontSize: '14px', color: '#70777E', marginBottom: '20px', flex: 1 }}>Status operacional dos servidores e dashboards do Grafana.</p>
-                 
-                 {/* O BOTÃO QUE VOCÊ COPIOU VAI AQUI DENTRO */}
-                 <button className={styles.buttonBase}>Acessar Monitoramento</button>
-              </div>
-
-              {/* CARD ANIVERSARIANTES */}
-              <div style={{ backgroundColor: '#ffffff', padding: '30px', borderRadius: '12px', border: '1px solid #F1F3F5' }}>
-                 <span style={{ backgroundColor: '#FFF4D6', color: '#946C00', padding: '4px 10px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, width: 'fit-content', marginBottom: '15px' }}>CELEBRAÇÃO</span>
-                 <h3 style={{ margin: '0 0 10px 0' }}>Aniversariantes do Mês</h3>
-                 <div style={{ marginTop: '15px' }}>
-                   {ANIVERSARIANTES.map((niver, i) => (
-                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < 2 ? '1px solid #F1F3F5' : 'none' }}>
-                       <span style={{ fontSize: '14px', color: '#495057' }}>{niver.nome}</span>
-                       <span style={{ fontSize: '12px', fontWeight: 600, color: '#ADB5BD' }}>{niver.dia} MAR</span>
-                     </div>
-                   ))}
-                 </div>
-              </div>
+              {outrasNoticias.length > 0 ? (
+                outrasNoticias.map((noticia, i) => (
+                  <article key={i} className={styles.newsCard} onClick={() => window.open(noticia.LinkNoticia || '#', '_blank')}>
+                    <div style={{ width: '100%', height: '220px', backgroundImage: `url(${noticia.ImagemURL})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                    <div style={{ padding: '20px' }}>
+                      <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', color: '#1C2510', fontWeight: 800, lineHeight: '1.3' }}>{noticia.Title}</h4>
+                      <p style={{ margin: 0, fontSize: '14px', color: '#6B7280', lineHeight: '1.5' }}>{noticia.Resumo}</p>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <p style={{ color: '#6B7280' }}>Não há comunicados recentes para exibir.</p>
+              )}
 
             </div>
-          </main>
+          </div>
+
+          <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            
+            {/* WIDGET DE EVENTOS DINÂMICO */}
+            <div className={styles.widgetCard}>
+              <h3 className={styles.sectionTitle}>Radar Corporativo</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                
+                {this.state.eventosReais.length > 0 ? (
+                  this.state.eventosReais.map((evento, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                      <div className={styles.calendarDateBlock}>
+                        <span style={{ fontSize: '18px', fontWeight: 900, lineHeight: '1' }}>{evento.Dia}</span>
+                        <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}>{evento.Mes}</span>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#1C2510' }}>{evento.Title}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280' }}>📍 {evento.Local}</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: '#6B7280', fontSize: '14px' }}>Nenhum evento agendado.</p>
+                )}
+
+              </div>
+            </div>
+
+            <div className={styles.widgetCard}>
+              <h3 className={styles.sectionTitle}>Nossa Equipe</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                {this.state.aniversariantesReais.length > 0 ? (
+                  this.state.aniversariantesReais.map((niver, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {niver.Email ? (
+                        <img 
+                          src={`${this.props.context.pageContext.web.absoluteUrl}/_layouts/15/userphoto.aspx?size=M&accountname=${niver.Email}`} 
+                          alt={niver.Title} 
+                          style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #A6CE39' }} 
+                        />
+                      ) : (
+                        <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#F1F9E6', color: '#5E7D14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', border: '2px solid #A6CE39' }}>🎉</div>
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#1C2510' }}>{niver.Title}</div>
+                        <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>{niver.Setor} • Dia {niver.Dia}</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: '#6B7280', fontSize: '14px' }}>Nenhum aniversariante encontrado.</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     );
